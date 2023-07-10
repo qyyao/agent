@@ -15,5 +15,7 @@ typedef struct {
 void load_phenotypes(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom);
 void load_phenotypes2(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom, int N, int D0, int D);
 int numPhenotypes(char *);
+long int numSlices_c(const char* nii_filename);
+void loadNthSlice_c(const char* nii_filename, t_matrix* slice, int i);
 
 #endif
