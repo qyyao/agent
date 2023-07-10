@@ -1,6 +1,6 @@
 # Copyright 2019, Winfield Chen and Lloyd T. Elliott.
 
-INCLUDE := ./include ./lib/include /usr/local/include ./lib/zstd-1.5.0 ./lib/zstd-1.5.0/common $(HOME)/opt/include/
+INCLUDE := ./include ./lib/include /usr/local/include ./lib/zstd-1.5.0 ./lib/zstd-1.5.0/common $(HOME)/opt/include/ ./lib/RNifti/
 LIBDIRS := /usr/local/lib
 LIBRARY += ./lib/zstd-1.5.0 ${MKLROOT}/lib/intel64
 LINK := gsl gslcblas m zstd mkl_intel_ilp64 mkl_sequential mkl_core dl
