@@ -43,7 +43,7 @@ void loop_each_variant(FILE* inputFile, FILE* outputFile, char *output_dir, t_ph
 	pthread_t write_thread;
 	pthread_t read_thread;
 	// Compute Threads
-	pthread_t* compute_threads = create_buf(
+	pthread_t* compute_threads = (pthread_t*)create_buf(
 			sizeof(compute_threads[0]), computeThreads);
 	// Thread pipes
 	ThreadPipe write_pipe;
