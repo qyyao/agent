@@ -9,7 +9,7 @@ static ComputeTask* tasks;
 static uint32_t tid;
 
 void preallocate_tasks(uint32_t m) {
-	tasks = create_buf(sizeof(tasks[0]), m);
+	tasks = static_cast<ComputeTask*>(create_buf(sizeof(tasks[0]), m));
 	tid = 0;
 }
 
