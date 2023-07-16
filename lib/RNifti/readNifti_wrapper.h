@@ -3,8 +3,14 @@
 extern "C" {
 #endif
 
+typedef struct {
+  double *X;
+  int N;
+  int D;
+} nifti_matrix;
+
 long int numSlices_wrapper(const char* nii_filename);
-void loadNthSlice_wrapper(const char* nii_filename, t_matrix* slice, int i);
+void loadNthSlice_wrapper(const char* nii_filename, nifti_matrix* slice, int i);
 
 #ifdef __cplusplus
 }

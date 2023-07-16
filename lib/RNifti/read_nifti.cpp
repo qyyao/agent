@@ -1,6 +1,4 @@
 #include "read_nifti.hpp"
-#include <nifti/nifti1_io.h>
-
 
 #define RNIFTI_NIFTILIB_VERSION 2
 #include "RNifti.h"
