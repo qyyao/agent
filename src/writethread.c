@@ -1,6 +1,8 @@
 // Copyright 2019, Winfield Chen and Lloyd T. Elliott.
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -17,8 +19,10 @@
 #include "bgenformat.h"
 // writethread.c
 
+// writethread.c
+
 void* write_thread_start_routine(void* arg) {
-	WriteThreadArgs* args = arg;
+	WriteThreadArgs* args = static_cast<WriteThreadArgs*>(arg);
 	AgentHeader* agentHeader = args->agentHeader;
 	ThreadPipe* pipe_in = args->pipe_in;
 	FILE* outputFile = args->outputFile;
@@ -26,11 +30,11 @@ void* write_thread_start_routine(void* arg) {
 	int is_agent = args->is_agent;
 	int action = args->action;
 	assert(action == ACT_BGA1 || action == ACT_DOSE || action == ACT_GWA1);
-	ComputeTask** tasks = create_buf(sizeof(tasks[0]), m);
+	ComputeTask** tasks = static_cast<ComputeTask**>(create_buf(sizeof(tasks[0]), m));
 
     uint32_t batch_size = BATCH_SIZE; // REMARK: Must be the same as other batch_size variables
-    size_t* variants_batch = create_buf(sizeof(variants_batch[0]), batch_size);
-    ComputeTask** tasks_batch = create_buf(sizeof(tasks_batch[0]), batch_size);
+    size_t* variants_batch = static_cast<size_t*>(create_buf(sizeof(variants_batch[0]), batch_size));
+    ComputeTask** tasks_batch = static_cast<ComputeTask**>(create_buf(sizeof(tasks_batch[0]), batch_size));
 
 	uint32_t written = 0;
 	while (written < m) {
