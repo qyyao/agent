@@ -30,12 +30,8 @@ void read_vid(FILE* bgenFile, VariantIdData* vid) {
 	vid->id = create_short_field(bgenFile);
 	vid->rsid = create_short_field(bgenFile);
 	vid->chr = create_short_field(bgenFile);
-	fread(
-			&vid->pos,
-			sizeof(vid->pos) + sizeof(vid->k),
-			1,
-			bgenFile);
-	vid->alleles = create_buf(sizeof(vid->alleles[0]), vid->k);
+	fread(&vid->pos, sizeof(vid->pos) + sizeof(vid->k), 1, bgenFile);
+	vid->alleles = (LongField**) create_buf(sizeof(vid->alleles[0]), vid->k);
 	for (uint16_t i = 0; i < vid->k; i += 1) {
 		vid->alleles[i] = create_long_field(bgenFile);
 	}
@@ -44,59 +40,23 @@ void read_vid(FILE* bgenFile, VariantIdData* vid) {
 void read_uncompressed_prob(
         FILE *bgenFile,
         UncompressedProbabilityData *prob) {
-    fread(
-            prob,
-            sizeof(prob->c)
-            + sizeof(prob->n)
-            + sizeof(prob->k)
-            + sizeof(prob->pmin)
-            + sizeof(prob->pmax),
-            1,
-            bgenFile);
-    prob->ploidy = create_buf(sizeof(prob->ploidy[0]), prob->n);
-    fread(
-            prob->ploidy,
-            prob->n,
-            1,
-            bgenFile);
-    fread(
-            &prob->phased,
-            sizeof(prob->phased) + sizeof(prob->b),
-            1,
-            bgenFile);
-    uint32_t bytesLeft =
-            prob->c
-            - sizeof(prob->n)
-            - sizeof(prob->k)
-            - sizeof(prob->pmin)
-            - sizeof(prob->pmax)
-            - prob->n
-            - sizeof(prob->phased)
-            - sizeof(prob->b);
-    prob->data = create_buf(sizeof(prob->data[0]), bytesLeft);
-    fread(
-            prob->data,
-            bytesLeft,
-            1,
-            bgenFile);
+    fread(prob, sizeof(prob->c) + sizeof(prob->n) + sizeof(prob->k) + sizeof(prob->pmin) + sizeof(prob->pmax), 1, bgenFile);
+    prob->ploidy = (uint8_t*) create_buf(sizeof(prob->ploidy[0]), prob->n);
+    fread(prob->ploidy, prob->n, 1, bgenFile);
+    fread(&prob->phased, sizeof(prob->phased) + sizeof(prob->b), 1, bgenFile);
+    uint32_t bytesLeft = prob->c - sizeof(prob->n) - sizeof(prob->k) - sizeof(prob->pmin) - sizeof(prob->pmax) - prob->n - sizeof(prob->phased) - sizeof(prob->b);
+    prob->data = (uint8_t*) create_buf(sizeof(prob->data[0]), bytesLeft);
+    fread(prob->data, bytesLeft, 1, bgenFile);
 }
 
 void read_compressed_prob(
         FILE *bgenFile,
         CompressedProbabilityData *prob) {
-    fread(
-            prob,
-            sizeof(prob->c)
-            + sizeof(prob->d),
-            1,
-            bgenFile);
-    prob->opaque = create_buf(sizeof(prob->opaque[0]), prob->c-4);
-    fread(
-            prob->opaque,
-            prob->c-4,
-            1,
-            bgenFile);
+    fread(prob, sizeof(prob->c) + sizeof(prob->d), 1, bgenFile);
+    prob->opaque = (uint8_t*) create_buf(sizeof(prob->opaque[0]), prob->c-4);
+    fread(prob->opaque, prob->c-4, 1, bgenFile);
 }
+
 
 void read_prob(FILE *bgenFile, ProbabilityData *prob_union, int is_zstd, int is_agent) {
     if (is_zstd || is_agent) {

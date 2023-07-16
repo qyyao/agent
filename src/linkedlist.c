@@ -7,7 +7,7 @@
 // linkedlist.c
 
 Node* create_node(Node* next, size_t size, void* data) {
-	Node* ret = malloc(sizeof(*ret));
+	Node* ret = (Node*)malloc(sizeof(*ret));
 	assert(ret != NULL);
 	*ret = (Node){
 		.next = next,
