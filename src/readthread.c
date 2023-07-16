@@ -1,6 +1,8 @@
 // Copyright 2019, Winfield Chen and Lloyd T. Elliott.
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -14,7 +16,7 @@
 // readthread.c
 
 void* read_thread_start_routine(void* arg) {
-	ReadThreadArgs* args = arg;
+	ReadThreadArgs* args = (ReadThreadArgs*) arg;
 	ThreadPipe* pipe_out = args->pipe_out;
 	FILE* inputFile = args->inputFile;
 	uint32_t m = args->m;
@@ -24,8 +26,8 @@ void* read_thread_start_routine(void* arg) {
     uint32_t buffer_factor = 2;
 	uint32_t variant = 0;
 	if (m >= batch_size) {
-	    size_t* variants = create_buf(sizeof(variants[0]), batch_size);
-	    ComputeTask** tasks = create_buf(sizeof(tasks[0]), batch_size);
+        size_t* variants = (size_t*) create_buf(sizeof(variants[0]), batch_size);
+        ComputeTask** tasks = (ComputeTask**) create_buf(sizeof(tasks[0]), batch_size);
         for (
                 ;
                 variant <= m - batch_size;
