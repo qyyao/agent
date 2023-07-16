@@ -57,7 +57,7 @@ void dosage_encode(
     }
     // Shrink the data buffer
     // n samples = n E(m)s = 2n bytes (each E(m) is b == 16 bits)
-    probDataBlock->data = resize_buf(data, sizeof(short), n);
+    probDataBlock->data = (uint8_t*)resize_buf(data, sizeof(short), n);
     // Original size (4n bytes) -> halved to new size (2n bytes)
     probDataBlock->c -= 2 * n;
 }
