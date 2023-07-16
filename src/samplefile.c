@@ -12,10 +12,11 @@ void read_samples(char *fname, SampleFile **sampleFile) {
     error("Memory exhausted");
   }
   sampleFile = &sf; // ?
-  typedef struct {
+typedef struct t_line {
     char *line;
-    void *next;
-  } t_line;
+    struct t_line *next; 
+} t_line;
+
 
   FILE *fp = fopen(fname, "r");
   if (fp == NULL) {
@@ -164,9 +165,9 @@ void read_strings(char *fname, StringFile **stringFile) {
     error("Memory exhausted");
   }
   stringFile = &sf; // ?
-  typedef struct {
+  typedef struct t_line {
     char *line;
-    void *next;
+    struct t_line *next;
   } t_line;
 
   FILE *fp = fopen(fname, "r");
