@@ -127,7 +127,7 @@ t_matrix load_file(FILE *fp) {
       if ((next->next = (t_line *)malloc(sizeof(t_line))) == NULL) {
         error("Memory limit reached");
       }
-      next = next->next;
+      next = (t_line*)next->next;
       if ((next->xs = (double *)malloc(D * sizeof(double))) == NULL) {
         error("Memory limit reached");
       }
@@ -156,7 +156,7 @@ t_matrix load_file(FILE *fp) {
     for (int j = 0; j < D; j++) {
       X[i + j * N] = first->xs[j];
     }
-    next = first->next;
+    next = (t_line*)first->next;
     free(first->xs);
     first->xs = NULL;
     free(first);
