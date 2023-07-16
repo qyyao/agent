@@ -2,9 +2,14 @@
 #define READ_NIFTI_HPP
 
 #include <string>
-#include <Eigen/Core>
 
-long int numSlices(const std::string& nii_filename);
-void loadNthSlice(const std::string& nii_filename, Eigen::MatrixXd& slice, int i);
+struct Chunk {
+    double* data;
+    long int size;
+};
 
-#endif
+long int numChunks(const std::string& nii_filename, long int chunk_size);
+
+Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int chunk_size);
+
+#endif //READ_NIFTI_HPP

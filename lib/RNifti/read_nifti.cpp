@@ -1,74 +1,59 @@
+#include "nifti1_io.h"  // For nifti_image struct and functions
 #include "read_nifti.hpp"
 
-#define RNIFTI_NIFTILIB_VERSION 2
-#include "RNifti.h"
-
-
-long int numSlices(const std::string& nii_filename) {
-
-    long int numSlices = 1;
-
-    // Load the NIfTI image from a file
-    RNifti::NiftiImage image(nii_filename);
-
-    // Get the dimensions
-    std::vector<long int> dims = image.dim();
-
-    // Calculate total number of slices
-    // This is the product of the dimensions from the third (z-axis) onwards
-    for (size_t i = 2; i < dims.size(); i++){
-        numSlices *= dims[i];
-    }
-
-    return numSlices;
-}
-
-
-void loadNthSlice(const std::string& nii_filename, Eigen::MatrixXd& slice, int i) {
+long int numChunks(const std::string& nii_filename, long int chunk_size) {
     // Load the NIfTI image from a file
     nifti_image* image = nifti_image_read(nii_filename.c_str(), 1);
 
-    // Check dimensions
-    if (image->ndim < 3) {
-        // Error handling code goes here - you probably want to throw an exception or at least return
-    }
+    // Get the total number of voxels in the image
+    long int totalVoxels = image->nvox;
 
-    // Get the dimensions
-    int nx = image->nx;
-    int ny = image->ny;
-    int nz = image->nz;
-
-    // Total number of z-slices
-    int total_slices = nz;
-
-    // Adjust for higher dimensions, if they exist
-    for (int dim = 3; dim < image->ndim; ++dim) {
-        total_slices *= image->dim[dim];
-    }
-
-    // Check if the slice index is valid
-    if (i < 0 || i >= total_slices) {
-        // Error handling code goes here - you probably want to throw an exception or at least return
-    }
-
-    // Calculate which z-slice and which set of z-slices this index corresponds to
-    int set_index = i / nz;
-    int z_index = i % nz;
-
-    // Resize the target slice to hold the data
-    slice.resize(nx, ny);
-
-    // Copy the voxel values into the slice
-    double* data = static_cast<double*>(image->data);
-    for (int x = 0; x < nx; ++x) {
-        for (int y = 0; y < ny; ++y) {
-            int idx = x + nx * (y + ny * (z_index + nz * set_index));
-            slice(x, y) = data[idx];
-        }
-    }
-
-    // Free the image after use
+    // Free the NIfTI image structure
     nifti_image_free(image);
+
+    // Calculate the total number of chunks
+    long int totalChunks = totalVoxels / chunk_size;
+
+    // Account for the last chunk if the total voxels are not exactly divisible by chunk size
+    if (totalVoxels % chunk_size != 0) {
+        totalChunks++;
+    }
+
+    return totalChunks;
 }
 
+Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int chunk_size) {
+    // Load the NIfTI image from a file
+    nifti_image* image = nifti_image_read(nii_filename.c_str(), 1);
 
+    // Get the total number of voxels
+    long int totalVoxels = image->nvox;
+
+    // Check if the chunk_index is valid
+    if (chunk_index < 0 || chunk_index * chunk_size >= totalVoxels) {
+        // Error handling code goes here - you probably want to throw an exception or at least return
+    }
+
+    // Calculate the start and end indices for the chunk
+    long int start_index = chunk_index * chunk_size;
+    long int end_index = start_index + chunk_size;
+    if (end_index > totalVoxels) {
+        end_index = totalVoxels;
+    }
+
+    // Prepare a chunk struct
+    Chunk chunk;
+    chunk.length = end_index - start_index;
+    chunk.data = new double[chunk.length];
+
+    // Fill the chunk with the relevant data
+    double* data = (double*) image->data;
+    for (long int i = start_index; i < end_index; i++) {
+        chunk.data[i - start_index] = data[i];
+    }
+
+    // Free the NIfTI image structure
+    nifti_image_free(image);
+
+    return chunk;
+}
