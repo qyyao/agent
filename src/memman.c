@@ -19,33 +19,35 @@ void* create_buf(size_t size, size_t nmemb) {
 }
 
 BgenHeader* create_bgen_header() {
-	BgenHeader* ret = malloc(sizeof(*ret));
+	BgenHeader* ret = (BgenHeader*) malloc(sizeof(*ret));
 	assert(ret != NULL);
 	return ret;
 }
 
 AgentHeader* create_agent_header(uint64_t l0) {
-	AgentHeader* ret = malloc(l0);
+	AgentHeader* ret = (AgentHeader*) malloc(l0);
 	assert(ret != NULL);
 	return ret;
 }
 
 AgentHeader *create_agent_header_bgen(BgenHeader *bgenHeader) {
-	uint64_t m = bgenHeader->m;
-	AgentHeader* ret = malloc(sizeof(*ret) + sizeof(ret->blocks[0]) * m);
-	*ret = (AgentHeader){
-		.magic = UINT64_C(0x313030746e656761), // "agent001"
-		.n = bgenHeader->n,
-		.m = m,
-		.unused[0] = 0, .unused[1] = 0, .unused[2] = 0, .unused[3] = 0,
-		.l0 = sizeof(*ret) + sizeof(ret->blocks[0]) * m
-	};
-	assert(ret != NULL);
-	return ret;
+    uint64_t m = bgenHeader->m;
+    AgentHeader* ret = (AgentHeader*) malloc(sizeof(*ret) + sizeof(ret->blocks[0]) * m);
+    if (ret != NULL) {
+        *ret = AgentHeader{
+            .magic = UINT64_C(0x313030746e656761), // "agent001"
+            .n = bgenHeader->n,
+            .m = m,
+            .unused = {0, 0, 0, 0},
+            .l0 = sizeof(*ret) + sizeof(ret->blocks[0]) * m
+        };
+    }
+    return ret;
 }
 
+
 VariantIdData* create_vid() {
-	VariantIdData* ret = malloc(sizeof(*ret));
+	VariantIdData* ret = (VariantIdData*) malloc(sizeof(*ret));
 	assert(ret != NULL);
 	return ret;
 }
@@ -53,7 +55,7 @@ VariantIdData* create_vid() {
 ShortField* create_short_field(FILE* file) {
 	uint16_t len;
 	fread(&len, sizeof(len), 1, file);
-	ShortField* ret = malloc(sizeof(*ret) + len);
+	ShortField* ret = (ShortField*) malloc(sizeof(*ret) + len);
 	assert(ret != NULL);
 	ret->length = len;
 	fread(&ret->data, len, 1, file);
@@ -63,7 +65,7 @@ ShortField* create_short_field(FILE* file) {
 LongField* create_long_field(FILE* file) {
 	uint32_t len;
 	fread(&len, sizeof(len), 1, file);
-	LongField* ret = malloc(sizeof(*ret) + len);
+	LongField* ret = (LongField*) malloc(sizeof(*ret) + len);
 	assert(ret != NULL);
 	ret->length = len;
 	fread(&ret->data, len, 1, file);
@@ -71,19 +73,19 @@ LongField* create_long_field(FILE* file) {
 }
 
 ProbabilityData* create_prob() {
-	ProbabilityData* ret = malloc(sizeof(*ret));
+	ProbabilityData* ret = (ProbabilityData*) malloc(sizeof(*ret));
 	assert(ret != NULL);
 	return ret;
 }
 
 AgentProbabilityData* create_agent_prob() {
-	AgentProbabilityData* ret = malloc(sizeof(*ret));
+	AgentProbabilityData* ret = (AgentProbabilityData*) malloc(sizeof(*ret));
 	assert(ret != NULL);
 	return ret;
 }
 
 AgentFseHeader* create_agent_fse_header() {
-	AgentFseHeader* ret = malloc(sizeof(*ret));
+	AgentFseHeader* ret = (AgentFseHeader*) malloc(sizeof(*ret));
 	assert(ret != NULL);
 	return ret;
 }
