@@ -13,7 +13,7 @@ void zstd_decompress(ComputeTask *task) {
     uint32_t c = prob_compressed->c;
     uint32_t d = prob_compressed->d;
     uint8_t* opaque = prob_compressed->opaque;
-    uint8_t* dst = create_buf(sizeof(dst[0]), d);
+    uint8_t* dst = (uint8_t*)create_buf(sizeof(dst[0]), d);
     size_t sz = ZSTD_decompress(dst, d, opaque, c-4);
     assert(sz == d);
     destroy_buf(opaque);
@@ -28,7 +28,7 @@ void zstd_decompress(ComputeTask *task) {
             &prob_uncompressed->n,
             dst,
             sz_copied);
-    prob_uncompressed->ploidy = create_buf(
+    prob_uncompressed->ploidy = (uint8_t*)create_buf(
             sizeof(prob_uncompressed->ploidy[0]),
             prob_uncompressed->n);
     memcpy(
@@ -44,7 +44,7 @@ void zstd_decompress(ComputeTask *task) {
     sz_copied +=
             sizeof(prob_uncompressed->phased)
             + sizeof(prob_uncompressed->b);
-    prob_uncompressed->data = create_buf(
+    prob_uncompressed->data = (uint8_t*)create_buf(
             sizeof(prob_uncompressed->data[0]),
             d - sz_copied);
     memcpy(
@@ -68,7 +68,7 @@ void agent_decompress(ComputeTask* task, AgentHeader* agentHeader) {
     prob_uncompressed->k = 2;
     prob_uncompressed->pmin = 2;
     prob_uncompressed->pmax = 2;
-    prob_uncompressed->ploidy = create_buf(
+    prob_uncompressed->ploidy = (uint8_t*)(
             sizeof(prob_uncompressed->ploidy[0]),
             prob_uncompressed->n);
     memset(
@@ -77,7 +77,7 @@ void agent_decompress(ComputeTask* task, AgentHeader* agentHeader) {
             prob_uncompressed->n);
     prob_uncompressed->phased = 0;
     prob_uncompressed->b = 16;
-    prob_uncompressed->data = create_buf(
+    prob_uncompressed->data = (uint8_t*)create_buf(
             sizeof(prob_uncompressed->data[0]),
             agentFseHeader.data_decomp_sz);
     if (agentFseHeader.data_comp_sz != 0) {
