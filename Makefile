@@ -1,9 +1,9 @@
 # Copyright 2019, Winfield Chen and Lloyd T. Elliott.
 
-INCLUDE := ./include ./lib/include /usr/local/include ./lib/zstd-1.5.0 ./lib/zstd-1.5.0/common $(HOME)/opt/include/ ./lib/RNifti/
+INCLUDE := ./include ./lib/include /usr/local/include ./lib/zstd-1.5.0 ./lib/zstd-1.5.0/common $(HOME)/opt/include/ ./lib/RNifti/ $(HOME)/mylibs/zlib/include
 LIBDIRS := /usr/local/lib
-LIBRARY += ./lib/zstd-1.5.0 ${MKLROOT}/lib/intel64 ./lib/RNifti/
-LINK := gsl gslcblas m zstd mkl_intel_ilp64 mkl_sequential mkl_core dl RNifti
+LIBRARY += ./lib/zstd-1.5.0 ${MKLROOT}/lib/intel64 ./lib/RNifti/ $(HOME)/mylibs/zlib/lib
+LINK := gsl gslcblas m zstd mkl_intel_ilp64 mkl_sequential mkl_core dl RNifti z
 COMMON := -DNDEBUG -DMKL_ILP64 -march=native -m64 -flto -fuse-linker-plugin -O3 -g -march=native -fno-trapping-math -funsafe-math-optimizations -fno-rounding-math -fcx-limited-range -fno-signed-zeros -floop-nest-optimize -D_FORTIFY_SOURCE=2 -fomit-frame-pointer -I${MKLROOT}/include -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -Wl,--no-as-needed -lm -ldl
 COMMON_FLAGS += -DNDEBUG -DMKL_ILP64 -pthread -march=native -m64 -flto -fuse-linker-plugin -O3 -g -march=native -fno-trapping-math -funsafe-math-optimizations -fno-rounding-math -fcx-limited-range -fno-signed-zeros -floop-nest-optimize -D_FORTIFY_SOURCE=2 -fomit-frame-pointer -I${MKLROOT}/include -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lpthread -Wl,--no-as-needed -lm -ldl
 CC := g++
