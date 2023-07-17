@@ -10,10 +10,13 @@ long int numChunks(const std::string& nii_filename, long int chunk_size) {
     // Get the total number of voxels in the image
     std::vector<int> dims = image.dim();
 
-    long int totalVoxels = dims[0] * dims[1] * dims[2] * dims[3];
-
-    // Free the NIfTI image structure
-    nifti_image_free(image);
+    // find total number of voxels
+    long int totalVoxels = 1;
+    for (int dim : dims) {
+        if (dim != 0) {
+            totalVoxels *= dim;
+        }
+    }
 
     // Calculate the total number of chunks
     long int totalChunks = totalVoxels / chunk_size;
@@ -36,12 +39,12 @@ Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int 
     // Get the total number of voxels
     std::vector<int> dims = image.dim();
 
-    long int totalVoxels = dims[0] * dims[1] * dims[2] * dims[3];
-
-
-    // Check if the chunk_index is valid
-    if (chunk_index < 0 || chunk_index * chunk_size >= totalVoxels) {
-        // 
+    // find total number of voxels
+    long int totalVoxels = 1;
+    for (int dim : dims) {
+        if (dim != 0) {
+            totalVoxels *= dim;
+        }
     }
 
     // Calculate the start and end indices for the chunk

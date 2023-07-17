@@ -10,15 +10,29 @@
 // }
 
 
-#include "read_nifti_wrapper.h"
+#include "read_nifti.hpp"
 
-// Helper function to print a chunk
-void print_chunk(const Chunk_c* chunk) {
+// Helper function to print a chunk with voxel coordinates
+void print_chunk_with_coordinates(const Chunk* chunk, int chunk_index, int chunk_size) {
+    printf("Chunk %d:\n", chunk_index);
+
+    // Calculate the starting voxel index for this chunk
+    long int start_voxel_index = chunk_index * chunk_size;
+
     for (int i = 0; i < chunk->size; ++i) {
-        printf("%f ", chunk->data[i]);
+        // Calculate the global voxel index for this voxel
+        long int voxel_index = start_voxel_index + i;
+
+        // Calculate the x, y, and z coordinates
+        int x = voxel_index % 64;
+        int y = (voxel_index / 64) % 64;
+        int z = voxel_index / (64 * 64);
+
+        // Print out the voxel coordinates and the voxel value
+        printf("Voxel (%d, %d, %d): %f\n", x, y, z, chunk->data[i]);
     }
-    printf("\n");
 }
+
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -28,29 +42,19 @@ int main(int argc, char* argv[]) {
     const char* nii_filename = argv[1];
     
     // Set chunk size
-    long int chunk_size = 20;
+    long int chunk_size = 64;
 
     // Get and print number of chunks
-    long int chunks = numChunks_c(nii_filename, chunk_size);
+    long int chunks = numChunks(nii_filename, chunk_size);
     printf("Number of chunks: %ld\n", chunks);
     
-    // Load and print the first chunk
-    if (chunks > 0) {
-        Chunk_c chunk1;
-        chunk1 = loadChunk_c(nii_filename, 0, chunk_size);
-        printf("First chunk:\n");
-        print_chunk(&chunk1);
-        free(chunk1.data); // Remember to free the dynamically allocated memory
+    for (int i = 18; i < 25; i++){
+        Chunk chunk;
+        chunk = loadChunk(nii_filename, i, chunk_size);
+        printf("%dth chunk:\n", i);
+        print_chunk_with_coordinates(&chunk, i, chunk_size); // Use the new function here
     }
 
-    // Load and print the second chunk
-    if (chunks > 1) {
-        Chunk_c chunk2;
-        chunk2 = loadChunk_c(nii_filename, 1, chunk_size);
-        printf("Second chunk:\n");
-        print_chunk(&chunk2);
-        free(chunk2.data); // Remember to free the dynamically allocated memory
-    }
 
     return 0;
 }
