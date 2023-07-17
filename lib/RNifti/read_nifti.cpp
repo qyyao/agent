@@ -1,12 +1,16 @@
-#include "nifti1_io.h"  // For nifti_image struct and functions
+#include "RNifti.h"  // For nifti_image struct and functions
 #include "read_nifti.hpp"
+
+
 
 long int numChunks(const std::string& nii_filename, long int chunk_size) {
     // Load the NIfTI image from a file
-    nifti_image* image = nifti_image_read(nii_filename.c_str(), 1);
+    RNifti::NiftiImage image(nii_filename);
 
     // Get the total number of voxels in the image
-    long int totalVoxels = image->nvox;
+    std::vector<int> dims = image.dim();
+
+    long int totalVoxels = dims[0] * dims[1] * dims[2] * dims[3];
 
     // Free the NIfTI image structure
     nifti_image_free(image);
@@ -23,15 +27,21 @@ long int numChunks(const std::string& nii_filename, long int chunk_size) {
 }
 
 Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int chunk_size) {
-    // Load the NIfTI image from a file
-    nifti_image* image = nifti_image_read(nii_filename.c_str(), 1);
+    // Load the NIfTI image from a file using RNifti
+    RNifti::NiftiImage image(nii_filename);
+    
+    // Reorient the image to RAS
+    image.reorient("RAS");
 
     // Get the total number of voxels
-    long int totalVoxels = image->nvox;
+    std::vector<int> dims = image.dim();
+
+    long int totalVoxels = dims[0] * dims[1] * dims[2] * dims[3];
+
 
     // Check if the chunk_index is valid
     if (chunk_index < 0 || chunk_index * chunk_size >= totalVoxels) {
-        // Error handling code goes here - you probably want to throw an exception or at least return
+        // 
     }
 
     // Calculate the start and end indices for the chunk
@@ -46,15 +56,13 @@ Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int 
     chunk.size = end_index - start_index;
     chunk.data = new double[chunk.size];
 
-    // Fill the chunk with the relevant data
-    double* data = (double*) image->data;
-    for (long int i = start_index; i < end_index; i++) {
-        chunk.data[i - start_index] = data[i];
-    }
+    // Access the pixel data of the NIfTI image
+    RNifti::NiftiImageData imageData = image.data();
 
-    // Free the NIfTI image structure
-    nifti_image_free(image);
+    // Fill the chunk with the relevant data
+    for (long int i = start_index; i < end_index; i++) {
+        chunk.data[i - start_index] = imageData[i];
+    }
 
     return chunk;
 }
-
