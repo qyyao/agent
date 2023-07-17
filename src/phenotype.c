@@ -3,7 +3,6 @@
 #include "matrix.h"
 #include "phenotype.h"
 #include <stdlib.h>
-#include "readNifti_wrapper.h"
 
 int numPhenotypes(char *fname) {
   FILE *fp = fopen(fname, "r");

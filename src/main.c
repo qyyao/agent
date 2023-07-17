@@ -10,10 +10,10 @@
 // }
 
 
-#include "readNifti_wrapper.h"
+#include "read_nifti_wrapper.h"
 
 // Helper function to print a chunk
-void print_chunk(const Chunk* chunk) {
+void print_chunk(const Chunk_c* chunk) {
     for (int i = 0; i < chunk->size; ++i) {
         printf("%f ", chunk->data[i]);
     }
@@ -36,8 +36,7 @@ int main(int argc, char* argv[]) {
     
     // Load and print the first chunk
     if (chunks > 0) {
-        Chunk chunk1;
-        chunk1.data = (double*) malloc(chunk_size * sizeof(double));  // Allocate memory for chunk data
+        Chunk_c chunk1;
         chunk1 = loadChunk_c(nii_filename, 0, chunk_size);
         printf("First chunk:\n");
         print_chunk(&chunk1);
@@ -46,8 +45,7 @@ int main(int argc, char* argv[]) {
 
     // Load and print the second chunk
     if (chunks > 1) {
-        Chunk chunk2;
-        chunk2.data = (double*) malloc(chunk_size * sizeof(double));  // Allocate memory for chunk data
+        Chunk_c chunk2;
         chunk2 = loadChunk_c(nii_filename, 1, chunk_size);
         printf("Second chunk:\n");
         print_chunk(&chunk2);

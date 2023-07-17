@@ -43,8 +43,8 @@ Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int 
 
     // Prepare a chunk struct
     Chunk chunk;
-    chunk.length = end_index - start_index;
-    chunk.data = new double[chunk.length];
+    chunk.size = end_index - start_index;
+    chunk.data = new double[chunk.size];
 
     // Fill the chunk with the relevant data
     double* data = (double*) image->data;
@@ -57,3 +57,4 @@ Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int 
 
     return chunk;
 }
+
