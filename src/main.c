@@ -9,17 +9,16 @@
 //   return agent_main(argc, argv);
 // }
 
-
 #include "read_nifti.hpp"
 
 // Helper function to print a chunk with voxel coordinates
-void print_chunk_with_coordinates(const Chunk* chunk, int chunk_index, int chunk_size) {
+void print_voxel_data_with_coordinates(double* voxelData, int chunk_index, int chunk_size) {
     printf("Chunk %d:\n", chunk_index);
 
     // Calculate the starting voxel index for this chunk
     long int start_voxel_index = chunk_index * chunk_size;
 
-    for (int i = 0; i < chunk->size; ++i) {
+    for (int i = 0; i < chunk_size; ++i) {
         // Calculate the global voxel index for this voxel
         long int voxel_index = start_voxel_index + i;
 
@@ -29,7 +28,7 @@ void print_chunk_with_coordinates(const Chunk* chunk, int chunk_index, int chunk
         int z = voxel_index / (64 * 64);
 
         // Print out the voxel coordinates and the voxel value
-        printf("Voxel (%d, %d, %d): %f\n", x, y, z, chunk->data[i]);
+        printf("Voxel (%d, %d, %d): %f\n", x, y, z, voxelData[i]);
     }
 }
 
@@ -48,13 +47,19 @@ int main(int argc, char* argv[]) {
     long int chunks = numChunks(nii_filename, chunk_size);
     printf("Number of chunks: %ld\n", chunks);
     
+    // Allocate the voxel data array
+    double* voxelData = new double[chunk_size];
+
     for (int i = 18; i < 25; i++){
-        Chunk chunk;
-        chunk = loadChunk(nii_filename, i, chunk_size);
+        // Load voxel data into the array
+        loadChunk(nii_filename, voxelData, i * chunk_size, (i + 1) * chunk_size);
+
         printf("%dth chunk:\n", i);
-        print_chunk_with_coordinates(&chunk, i, chunk_size); // Use the new function here
+        print_voxel_data_with_coordinates(voxelData, i, chunk_size); // Use the new function here
     }
 
+    // Deallocate the voxel data array
+    delete[] voxelData;
 
     return 0;
 }

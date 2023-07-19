@@ -29,12 +29,13 @@ long int numChunks(const std::string& nii_filename, long int chunk_size) {
     return totalChunks;
 }
 
-Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int chunk_size) {
+void loadChunk(const std::string& nii_filename, double* voxelArray, long int startIndex, long int endIndex) {
     // Load the NIfTI image from a file using RNifti
     RNifti::NiftiImage image(nii_filename);
-    
+
     // Reorient the image to RAS
-    image.reorient("RAS");
+    //NEEDED SOMETIMES - NEEDS MORE INVESTIGATING
+    //image.reorient("RAS");
 
     // Get the total number of voxels
     std::vector<long int> dims = image.dim();
@@ -47,25 +48,17 @@ Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int 
         }
     }
 
-    // Calculate the start and end indices for the chunk
-    long int start_index = chunk_index * chunk_size;
-    long int end_index = start_index + chunk_size;
-    if (end_index > totalVoxels) {
-        end_index = totalVoxels;
+    // Verify the indices
+    if (startIndex < 0 || endIndex > totalVoxels || startIndex > endIndex) {
+        throw std::invalid_argument("Invalid voxel data indices provided.");
     }
-
-    // Prepare a chunk struct
-    Chunk chunk;
-    chunk.size = end_index - start_index;
-    chunk.data = new double[chunk.size];
 
     // Access the pixel data of the NIfTI image
     RNifti::NiftiImageData imageData = image.data();
 
-    // Fill the chunk with the relevant data
-    for (long int i = start_index; i < end_index; i++) {
-        chunk.data[i - start_index] = imageData[i];
+    // Fill the voxelArray with the relevant data
+    for (long int i = startIndex; i < endIndex; i++) {
+        voxelArray[i - startIndex] = imageData[i];
     }
-
-    return chunk;
 }
+

@@ -4,13 +4,7 @@
 #include <string>
 #include "read_nifti.hpp"
 
-struct Chunk {
-    double* data;
-    long int size;
-};
-
 long int numChunks(const std::string& nii_filename, long int chunk_size);
-
-Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int chunk_size);
+void loadChunk(const std::string& nii_filename, double* voxelArray, long int startIndex, long int endIndex);
 
 #endif //READ_NIFTI_HPP
