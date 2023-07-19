@@ -2,6 +2,7 @@
 #define READ_NIFTI_HPP
 
 #include <string>
+#include "read_nifti.hpp"
 
 struct Chunk {
     double* data;

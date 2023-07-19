@@ -1,14 +1,14 @@
-#include "RNifti.h"  // For nifti_image struct and functions
 #include "read_nifti.hpp"
 
-
+#define RNIFTI_NIFTILIB_VERSION 2
+#include "RNifti.h"
 
 long int numChunks(const std::string& nii_filename, long int chunk_size) {
     // Load the NIfTI image from a file
     RNifti::NiftiImage image(nii_filename);
 
     // Get the total number of voxels in the image
-    std::vector<int> dims = image.dim();
+    std::vector<long int> dims = image.dim();
 
     // find total number of voxels
     long int totalVoxels = 1;
@@ -37,7 +37,7 @@ Chunk loadChunk(const std::string& nii_filename, long int chunk_index, long int 
     image.reorient("RAS");
 
     // Get the total number of voxels
-    std::vector<int> dims = image.dim();
+    std::vector<long int> dims = image.dim();
 
     // find total number of voxels
     long int totalVoxels = 1;
