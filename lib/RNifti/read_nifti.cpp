@@ -9,7 +9,7 @@ int is_nifti_file_wrapper(const char* nii_filename){
     return is_nifti_file(nii_filename);
 }
 
-long int numVoxelsPerSubject(const char* nii_filename){
+long int getVoxelsPerSubject(const char* nii_filename){
     // Load the NIfTI image from a file
     RNifti::NiftiImage image(nii_filename);
 
@@ -27,7 +27,7 @@ long int numVoxelsPerSubject(const char* nii_filename){
 
 long int numChunks(const char* nii_filename, long int chunk_size) {
     
-    long int numVoxels = numVoxelsPerSubject(nii_filename);
+    long int numVoxels = getVoxelsPerSubject(nii_filename);
 
     long int totalChunks = numVoxels/chunk_size;
 
@@ -39,7 +39,7 @@ long int numChunks(const char* nii_filename, long int chunk_size) {
     return totalChunks;
 }
 
-int num_subjects(const char* nii_filename){
+int getNumSubjects(const char* nii_filename){
     // Load the NIfTI image from a file
     RNifti::NiftiImage image(nii_filename);
 
@@ -62,7 +62,7 @@ void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, l
     // Access the pixel data of the NIfTI image
     RNifti::NiftiImageData imageData = image.data();
 
-    long int voxelsPerSubject = voxelsPerSubject(nii_filename);
+    long int voxelsPerSubject = getVoxelsPerSubject(nii_filename);
 
     // Fill the voxelArray with the relevant data
     // Iterate over each subject
