@@ -83,6 +83,23 @@ t_matrix load2(FILE *fp, int N, int M0, int M) {
   return result;
 }
 
+t_matrix load2_voxels(double *data, int N, int M0, int M) {
+  t_matrix result = create(N, M);
+  int idx = 0;
+  
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < M0; j++) {
+      double f = data[idx++];
+      result.X[N * j + i] = f;
+    }
+    for (int j = M0; j < M; j++) {
+      result.X[N * j + i] = 0.0;
+    }
+  }
+
+  return result;
+}
+
 t_matrix load_file(FILE *fp) {
   typedef struct {
     double *xs;

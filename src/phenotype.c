@@ -89,6 +89,44 @@ void load_phenotypes2(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom, 
   }
 }
 
+void load_phenotypes2_voxels(double* data, t_matrix *y, t_matrix *obs, t_matrix *denom, int N, int numSubjects, int D0, int D) {
+
+  D = D0; 
+
+  *y = create(N, D);
+  *obs = create(N, D);
+  *denom = create(1, D);
+
+  zero(*denom);
+
+  for (int i = 0; i < numSubjects; i++) {   // Iterate over subjects
+    for (int j = 0; j < D0; j++) {          // Iterate over phenotypes
+      double value = data[i*D0 + j];        // Accessing the data
+      put(*y, value, i, j);
+      put(*obs, (isnan(value) ? 0.0 : 1.0), i, j);
+      put(*denom, (isnan(value) ? get(*denom, 0, j) : get(*denom, 0, j) + 1), 0, j);
+    }
+  }
+
+  for (int j = 0; j < D0; j++) {
+    if (get(*denom, 0, j) < 0.5) {
+      error("Values all missing for j-th phenotype");
+    }
+  }
+
+  for (int j = 0; j < D0; j++) {
+    double mu = 0.0;
+    for (int i = 0; i < numSubjects; i++) {
+      mu += get(*y, i, j);
+    }
+    mu /= get(*denom, 0, j);
+    for (int i = 0; i < numSubjects; i++) {
+      put(*y, get(*obs, i, j) * (get(*y, i, j) - mu), i, j);
+    }
+  }
+}
+
+
 void load_phenotypes(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom) {
   *y = load(fname);
   int N = y->N;
