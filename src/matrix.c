@@ -90,10 +90,10 @@ t_matrix load2_voxels(double *data, int N, int M0, int M) {
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < M0; j++) {
       double f = data[idx++];
-      result.X[N * j + i] = f;
+      result.X[i * M + j] = f; 
     }
     for (int j = M0; j < M; j++) {
-      result.X[N * j + i] = 0.0;
+      result.X[i * M + j] = 0.0;
     }
   }
 
