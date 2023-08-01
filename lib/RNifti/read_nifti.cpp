@@ -25,7 +25,7 @@ long int getVoxelsPerSubject(const char* nii_filename){
     return numVoxels;
 }
 
-long int numChunks(const char* nii_filename, long int chunk_size) {
+long int getNumChunks(const char* nii_filename, long int chunk_size) {
     
     long int numVoxels = getVoxelsPerSubject(nii_filename);
 
@@ -60,7 +60,9 @@ void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, l
     RNifti::NiftiImage image(nii_filename);
 
     // Access the pixel data of the NIfTI image
-    RNifti::NiftiImageData imageData = image.data();
+    RNifti::NiftiImageData imageData = image.data(); 
+    
+    //TODO: RAS
 
     long int voxelsPerSubject = getVoxelsPerSubject(nii_filename);
 
@@ -81,4 +83,49 @@ void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, l
     }
 }
 
+void agent_convert(const char* nii_filename, const char* phenotypes_filename) {
+    // Get the number of subjects
+    int numSubjects = getNumSubjects(nii_filename);
+
+    // Get the total number of voxels per subject
+    long int voxelsPerSubject = getVoxelsPerSubject(nii_filename);
+
+    // Load the NIfTI image from a file using RNifti
+    RNifti::NiftiImage image(nii_filename);
+
+    // Access the pixel data of the NIfTI image
+    RNifti::NiftiImageData imageData = image.data();
+
+    // Open a file stream for the phenotype file, creating it if it does not exist
+    std::ofstream phenotypeFile(phenotypes_filename);
+
+    // Write the headers
+    for (int voxel = 1; voxel <= voxelsPerSubject; voxel++) {
+        phenotypeFile << "V" << voxel;
+        if (voxel < voxelsPerSubject) {
+            phenotypeFile << ' ';
+        }
+    }
+    phenotypeFile << '\n';
+
+    // Iterate over the subjects, and for each subject, write the corresponding value for each voxel
+    for (int subj = 0; subj < numSubjects; subj++) {
+        for (long int i = 0; i < voxelsPerSubject; i++) {
+            long int idx = subj * voxelsPerSubject + i;
+            phenotypeFile << static_cast<double>(imageData[idx]);
+            if (i < voxelsPerSubject - 1) {
+                phenotypeFile << ' ';
+            }
+        }
+        phenotypeFile << '\n';
+    }
+
+    // Close the phenotype file
+    phenotypeFile.close();
+
+    std::cout << "Conversion complete. Phenotypes written to " << phenotypes_filename << std::endl;
+}
+
+
 } // extern "C"
+
