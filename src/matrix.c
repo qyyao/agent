@@ -212,6 +212,7 @@ t_matrix load(char *fname) {
 void print(t_matrix A) {
   int N = A.N;
   int D = A.D;
+  printf("Size: %dx%d\n", D, N);
   for (int i = 0; i < N; i++) {
     int first = 1;
     for (int d = 0; d < D; d++) {

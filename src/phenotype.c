@@ -29,19 +29,6 @@ int numPhenotypes(char *fname) {
   return D + 1;
 }
 
-void print_matrix(t_matrix m) {
-    printf("N: %d\n", m.N);
-    printf("D: %d\n", m.D);
-    printf("Values: \n");
-    
-    for (int i = 0; i < m.N; i++) {
-      for (int j = 0; j < m.D; j++) {
-        printf("%.2f ", m.X[i * m.D + j]);
-      }
-      printf("\n");
-    }
-  }
-
 void load_phenotypes2(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom, int N, int D0, int D) {
   FILE *fp = fopen(fname, "r");
   if (fp == NULL) {
@@ -61,8 +48,6 @@ void load_phenotypes2(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom, 
   }
 
   *y = load2(fp, N, D0, D);
-  printf("load2 output:\n");
-  print_matrix(*y);
   fclose(fp);
   *obs = create(N, D);
   *denom = create(1, D);
@@ -107,8 +92,9 @@ void load_phenotypes2(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom, 
 void load_phenotypes2_voxels(double* data, t_matrix *y, t_matrix *obs, t_matrix *denom, int N, int numSubjects, int D0, int D) {
 
   *y = load2_voxels(data, N, D0, D);
-  printf("load2 output:\n");
-  print_matrix(*y);
+
+  //print(*y);
+
   *obs = create(N, D);
   *denom = create(1, D);
   zero(*denom);
