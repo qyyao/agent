@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -25,6 +26,7 @@
 #include "matrix.h"
 #include "phenotype.h"
 #include "statistics.h"
+#include "read_nifti.h"
 // agent.c
 
 void loop_each_variant(FILE* inputFile, FILE* outputFile, char *output_dir, t_phenotype *phenos, BgenHeader *bgenHeader, AgentHeader *agentHeader, uint16_t computeThreads, int action) {
@@ -148,153 +150,338 @@ int agent_main(int argc, char** argv) {
           }
           
           case ACT_GWA1: {
+
             assert(inputA1File != NULL);
             assert(inputGenFile == NULL);
             assert(inputBgenFile == NULL);
             assert(outputGwasDirectory != NULL);
-            assert(inputPhenotypeFile != NULL);
+            assert(inputPhenotypeFile != NULL); 
             t_matrix y;
             t_matrix yt;
             t_matrix obs;
             t_matrix denom;
+
             int N = numSamples(inputA1File);
             int M = numVariants(inputA1File);
-            int D0 = numPhenotypes(inputPhenotypeFile);
-            int D;
-            if (D0 % (sysconf(_SC_PAGESIZE) / 8) == 0) {
-              D = D0;
-            } else {
-              D = (D0 / (sysconf(_SC_PAGESIZE) / 8) + 1) * (sysconf(_SC_PAGESIZE) / 8);
-            }
-            load_phenotypes2(inputPhenotypeFile, &y, &obs, &denom, N, D0, D);
-            t_phenotype phenos;
-            yt = create(D, N);
-            for (int i = 0; i < N; i++) {
-              for (int j = 0; j < D; j++) {
-                yt.X[D * i + j] = y.X[N * j + i];
+
+            printf("N is %d\n", N); 
+            printf("M is %d\n", M); 
+
+            int test = 1;
+
+            if (1 == 2){
+            //if (is_nifti_file_wrapper(inputPhenotypeFile)){
+
+              int numSubjects = getNumSubjects(inputPhenotypeFile);
+
+              printf("there are %d subjects\n", numSubjects);
+
+              int chunkSize = (sysconf(_SC_PAGESIZE) / 8);
+
+              long int numChunks = getNumChunks(inputPhenotypeFile, chunkSize);
+
+              printf("there are %d chunks of size %d\n", numChunks, chunkSize);
+
+              double* voxelArray = (double*)malloc(chunkSize * sizeof(double));
+
+              int D0 = chunkSize;
+              int D;
+
+              if (D0 % (sysconf(_SC_PAGESIZE) / 8) == 0) { 
+                D = D0;
+              } else {
+                D = (D0 / (sysconf(_SC_PAGESIZE) / 8) + 1) * (sysconf(_SC_PAGESIZE) / 8);
               }
-            }
-            phenos.y = &y;
-            phenos.yt = &yt;
-            phenos.obs = &obs;
-            phenos.denom = &denom;
-            if (D <= 0) {
-              error("No phenotypes provided");
-            }
-            //if ((D * 8) % sysconf(_SC_PAGESIZE) != 0) {
-            //  error("Number of phenotypes must be a multiple of the page size divided by 8");
-            //}
-            if (N <= 2) {
-              error("Phenotypes describe two or fewer subjects");
-            }
+              
+              for (int i = 0; i < numChunks; i++){
+
+                long int startIndex = i * chunkSize;
+                long int endIndex = (i + 1) * chunkSize;
+
+                void loadChunk(inputPhenotypeFile, voxelArray, numSubjects, startIndex, endIndex, chunkSize);
+
+                load_phenotypes2_voxels(voxelArray, &y, &obs, &denom, N, numSubjects, D0, D);
+
+                t_phenotype phenos;
+                yt = create(D, N);
+                for (int i = 0; i < N; i++) {
+                  for (int j = 0; j < D; j++) {
+                    yt.X[D * i + j] = y.X[N * j + i];
+                  }
+                }
+                phenos.y = &y;
+                phenos.yt = &yt;
+                phenos.obs = &obs;
+                phenos.denom = &denom;
+                if (D <= 0) {
+                  error("No phenotypes provided");
+                }
+                //if ((D * 8) % sysconf(_SC_PAGESIZE) != 0) {
+                //  error("Number of phenotypes must be a multiple of the page size divided by 8");
+                //}
+                if (N <= 2) { 
+                  error("Phenotypes describe two or fewer subjects"); 
+                }
+
+                char subdirectory[PATH_MAX];
+                snprintf(subdirectory, sizeof(subdirectory), "%s/chunk_%04d", outputGwasDirectory, i); 
+                mkdir(subdirectory, 0755);
+
+                char *fi_list[] = { subdirectory, "info.txt", NULL };
+                char *fi_name = join(fi_list, "/");
+                FILE *fi_file = fopen(fi_name, "w");
+                if (fi_file == NULL) {
+                  error("Error opening file");
+                }
+                free(fi_name);
+                fprintf(fi_file, "D = %d\nD0 = %d\nM = %d\nN = %d\n", D, D0, M, N);
+                fclose(fi_file);
+
+                char *fu_list[] = { subdirectory, "unpack", NULL };
+                char *fu_name = join(fu_list, "/");
+                FILE *fu_file = fopen(fu_name, "w");
+                if (fu_file == NULL) {
+                  error("Error opening file");
+                }
+                #include "unpack.h" 
+                if (fwrite(unpack, sizeof(unsigned char), unpack_len, fu_file) != unpack_len) {
+                  error("Could not write unpacking script");
+                }
+                fclose(fu_file);
+                chmod(fu_name, S_IRWXU); //make obs zero for zero padded values
+                free(fu_name);
+
+                inputFile = open_file(inputA1File, "r");
+                char *fl_list[] = { subdirectory, "log.txt", NULL };
+                char *fl_name = join(fl_list, "/");
+                outputFile = open_file(fl_name, "w");
+                if (outputFile == NULL) {
+                  error("Error opening file");
+                }
+                free(fl_name);
+                char *fb_list[] = { subdirectory, "beta.bin", NULL };
+                char *fb_name = join(fb_list, "/");
+                FILE *fb = fopen(fb_name, "w");
+                if (fb == NULL) {
+                  
+                  error("Error opening file");
+                }
+                free(fb_name);
+                int z;
+                off64_t size = (off64_t)D * (off64_t)M * (off64_t)sizeof(double);
+                // printf("%d %d %d %lld %d\n", D, M, sizeof(double), (off64_t)D*(off64_t)M*(off64_t)sizeof(double), sizeof(off64_t));
+                // printf("size = %lld\n", size);
+                system("echo -n $(date)");
+                printf(" Allocating beta.bin\n");
+                z = posix_fallocate64(fileno(fb), 0, size);
+                if (z != 0) {
+                  fprintf(stderr, "%d %d: %s\n", z, errno, strerror(errno));
+                  error("Could not resize output file");
+                }
+                fclose(fb);
+                char *fs_list[] = { subdirectory, "se.bin", NULL };
+                char *fs_name = join(fs_list, "/");
+                FILE *fs = fopen(fs_name, "w");
+                if (fs == NULL) {
+                  error("Error opening file");
+                }
+                free(fs_name);
+                system("echo -n $(date)");
+                printf(" Allocating se.bin\n");
+                z = posix_fallocate64(fileno(fs), 0, size);
+                if (z != 0) {
+                  error("Could not resize output file");
+                }
+                fclose(fs);
+                char *ft_list[] = { subdirectory, "tstat.bin", NULL };
+                char *ft_name = join(ft_list, "/");
+                FILE *ft = fopen(ft_name, "w");
+                if (ft == NULL) {
+                  error("Error opening file");
+                }
+                free(ft_name);
+                system("echo -n $(date)");
+                printf(" Allocating tstat.bin\n");
+                z = posix_fallocate64(fileno(ft), 0, size);
+                if (z != 0) {
+                  error("Could not resize output file");
+                }
+                fclose(ft);
+                char *fp_list[] = { subdirectory, "pval.bin", NULL };
+                char *fp_name = join(fp_list, "/");
+                FILE *fp = fopen(fp_name, "w");
+                if (fp == NULL) {
+                  error("Error opening file");
+                }
+                free(fp_name);
+                system("echo -n $(date)");
+                printf(" Allocating pval.bin\n");
+                z = posix_fallocate64(fileno(fp), 0, size); //resizes file to 'size', points to memory on disk for writing p-values multithreaded
+                if (z != 0) {
+                  error("Could not resize output file");
+                }
+                fclose(fp);
+
+                uint64_t l0 = read_l0(inputFile);
+                agentHeader = create_agent_header(l0);
+                read_agent_header(inputFile, agentHeader);
+                validate_agent_header(agentHeader);
+                loop_each_variant(inputFile, outputFile, outputGwasDirectory, &phenos, NULL, agentHeader, computeThreads, action);
+                destroy_agent_header(agentHeader);
+                close_files(inputFile, outputFile);
+                destroy(*phenos.y);
+                destroy(*phenos.yt);
+                destroy(*phenos.obs);
+                destroy(*phenos.denom);
+                system("echo -n $(date)");
+                printf(" Allocation complete\n");
+              }
             
-            char *fi_list[] = { outputGwasDirectory, "info.txt", NULL };
-            char *fi_name = join(fi_list, "/");
-            FILE *fi_file = fopen(fi_name, "w");
-            if (fi_file == NULL) {
-              error("Error opening file");
+            free(voxelArray);
+            
             }
-            free(fi_name);
-            fprintf(fi_file, "D = %d\nD0 = %d\nM = %d\nN = %d\n", D, D0, M, N);
-            fclose(fi_file);
 
-            char *fu_list[] = { outputGwasDirectory, "unpack", NULL };
-            char *fu_name = join(fu_list, "/");
-            FILE *fu_file = fopen(fu_name, "w");
-            if (fu_file == NULL) {
-              error("Error opening file");
-            }
-            #include "unpack.h"
-            if (fwrite(unpack, sizeof(unsigned char), unpack_len, fu_file) != unpack_len) {
-              error("Could not write unpacking script");
-            }
-            fclose(fu_file);
-            chmod(fu_name, S_IRWXU);
-            free(fu_name);
+            else{
 
-            inputFile = open_file(inputA1File, "r");
-            char *fl_list[] = { outputGwasDirectory, "log.txt", NULL };
-            char *fl_name = join(fl_list, "/");
-            outputFile = open_file(fl_name, "w");
-            if (outputFile == NULL) {
-              error("Error opening file");
-            }
-            free(fl_name);
-            char *fb_list[] = { outputGwasDirectory, "beta.bin", NULL };
-            char *fb_name = join(fb_list, "/");
-            FILE *fb = fopen(fb_name, "w");
-            if (fb == NULL) {
-              error("Error opening file");
-            }
-            free(fb_name);
-            int z;
-            off64_t size = (off64_t)D * (off64_t)M * (off64_t)sizeof(double);
-            // printf("%d %d %d %lld %d\n", D, M, sizeof(double), (off64_t)D*(off64_t)M*(off64_t)sizeof(double), sizeof(off64_t));
-            // printf("size = %lld\n", size);
-            system("echo -n $(date)");
-            printf(" Allocating beta.bin\n");
-            z = posix_fallocate64(fileno(fb), 0, size);
-            if (z != 0) {
-              fprintf(stderr, "%d %d: %s\n", z, errno, strerror(errno));
-              error("Could not resize output file");
-            }
-            fclose(fb);
-            char *fs_list[] = { outputGwasDirectory, "se.bin", NULL };
-            char *fs_name = join(fs_list, "/");
-            FILE *fs = fopen(fs_name, "w");
-            if (fs == NULL) {
-              error("Error opening file");
-            }
-            free(fs_name);
-            system("echo -n $(date)");
-            printf(" Allocating se.bin\n");
-            z = posix_fallocate64(fileno(fs), 0, size);
-            if (z != 0) {
-              error("Could not resize output file");
-            }
-            fclose(fs);
-            char *ft_list[] = { outputGwasDirectory, "tstat.bin", NULL };
-            char *ft_name = join(ft_list, "/");
-            FILE *ft = fopen(ft_name, "w");
-            if (ft == NULL) {
-              error("Error opening file");
-            }
-            free(ft_name);
-            system("echo -n $(date)");
-            printf(" Allocating tstat.bin\n");
-            z = posix_fallocate64(fileno(ft), 0, size);
-            if (z != 0) {
-              error("Could not resize output file");
-            }
-            fclose(ft);
-            char *fp_list[] = { outputGwasDirectory, "pval.bin", NULL };
-            char *fp_name = join(fp_list, "/");
-            FILE *fp = fopen(fp_name, "w");
-            if (fp == NULL) {
-              error("Error opening file");
-            }
-            free(fp_name);
-            system("echo -n $(date)");
-            printf(" Allocating pval.bin\n");
-            z = posix_fallocate64(fileno(fp), 0, size);
-            if (z != 0) {
-              error("Could not resize output file");
-            }
-            fclose(fp);
+              int D0 = numPhenotypes(inputPhenotypeFile); 
+              int D;
+              if (D0 % (sysconf(_SC_PAGESIZE) / 8) == 0) { //make chunk size satisfy this
+                D = D0;
+              } else {
+                D = (D0 / (sysconf(_SC_PAGESIZE) / 8) + 1) * (sysconf(_SC_PAGESIZE) / 8);
+              }
+              load_phenotypes2(inputPhenotypeFile, &y, &obs, &denom, N, D0, D); 
 
-            uint64_t l0 = read_l0(inputFile);
-            agentHeader = create_agent_header(l0);
-            read_agent_header(inputFile, agentHeader);
-            validate_agent_header(agentHeader);
-            loop_each_variant(inputFile, outputFile, outputGwasDirectory, &phenos, NULL, agentHeader, computeThreads, action);
-            destroy_agent_header(agentHeader);
-            close_files(inputFile, outputFile);
-            destroy(*phenos.y);
-            destroy(*phenos.yt);
-            destroy(*phenos.obs);
-            destroy(*phenos.denom);
-            system("echo -n $(date)");
-            printf(" Allocation complete\n");
+              t_phenotype phenos;
+              yt = create(D, N);
+              for (int i = 0; i < N; i++) {
+                for (int j = 0; j < D; j++) {
+                  yt.X[D * i + j] = y.X[N * j + i];
+                }
+              }
+              phenos.y = &y;
+              phenos.yt = &yt;
+              phenos.obs = &obs;
+              phenos.denom = &denom;
+              if (D <= 0) {
+                error("No phenotypes provided");
+              }
+              //if ((D * 8) % sysconf(_SC_PAGESIZE) != 0) {
+              //  error("Number of phenotypes must be a multiple of the page size divided by 8");
+              //}
+              if (N <= 2) {
+                error("Phenotypes describe two or fewer subjects");
+              }
+              
+              char *fi_list[] = { outputGwasDirectory, "info.txt", NULL };
+              char *fi_name = join(fi_list, "/");
+              FILE *fi_file = fopen(fi_name, "w");
+              if (fi_file == NULL) {
+                error("Error opening file");
+              }
+              free(fi_name);
+              fprintf(fi_file, "D = %d\nD0 = %d\nM = %d\nN = %d\n", D, D0, M, N);
+              fclose(fi_file);
+
+              char *fu_list[] = { outputGwasDirectory, "unpack", NULL };
+              char *fu_name = join(fu_list, "/");
+              FILE *fu_file = fopen(fu_name, "w");
+              if (fu_file == NULL) {
+                error("Error opening file");
+              }
+              #include "unpack.h" //can be used for testing - without arguments to print
+              if (fwrite(unpack, sizeof(unsigned char), unpack_len, fu_file) != unpack_len) {
+                error("Could not write unpacking script");
+              }
+              fclose(fu_file);
+              chmod(fu_name, S_IRWXU); //make obs zero for zero padded values
+              free(fu_name);
+
+              inputFile = open_file(inputA1File, "r");
+              char *fl_list[] = { outputGwasDirectory, "log.txt", NULL };
+              char *fl_name = join(fl_list, "/");
+              outputFile = open_file(fl_name, "w");
+              if (outputFile == NULL) {
+                error("Error opening file");
+              }
+              free(fl_name);
+              char *fb_list[] = { outputGwasDirectory, "beta.bin", NULL };
+              char *fb_name = join(fb_list, "/");
+              FILE *fb = fopen(fb_name, "w");
+              if (fb == NULL) {
+                error("Error opening file");
+              }
+              free(fb_name);
+              int z;
+              off64_t size = (off64_t)D * (off64_t)M * (off64_t)sizeof(double);
+              // printf("%d %d %d %lld %d\n", D, M, sizeof(double), (off64_t)D*(off64_t)M*(off64_t)sizeof(double), sizeof(off64_t));
+              // printf("size = %lld\n", size);
+              system("echo -n $(date)");
+              printf(" Allocating beta.bin\n");
+              printf("File Descriptor: %d\n", fileno(fb));
+              z = posix_fallocate64(fileno(fb), 0, size);
+              if (z != 0) { //<- this is where error occurs
+                fprintf(stderr, "%d %d: %s\n", z, errno, strerror(errno));
+                error("Could not resize output file");
+              }
+              fclose(fb);
+              char *fs_list[] = { outputGwasDirectory, "se.bin", NULL };
+              char *fs_name = join(fs_list, "/");
+              FILE *fs = fopen(fs_name, "w");
+              if (fs == NULL) {
+                error("Error opening file");
+              }
+              free(fs_name);
+              system("echo -n $(date)");
+              printf(" Allocating se.bin\n");
+              z = posix_fallocate64(fileno(fs), 0, size);
+              if (z != 0) {
+                error("Could not resize output file");
+              }
+              fclose(fs);
+              char *ft_list[] = { outputGwasDirectory, "tstat.bin", NULL };
+              char *ft_name = join(ft_list, "/");
+              FILE *ft = fopen(ft_name, "w");
+              if (ft == NULL) {
+                error("Error opening file");
+              }
+              free(ft_name);
+              system("echo -n $(date)");
+              printf(" Allocating tstat.bin\n");
+              z = posix_fallocate64(fileno(ft), 0, size);
+              if (z != 0) {
+                error("Could not resize output file");
+              }
+              fclose(ft);
+              char *fp_list[] = { outputGwasDirectory, "pval.bin", NULL };
+              char *fp_name = join(fp_list, "/");
+              FILE *fp = fopen(fp_name, "w");
+              if (fp == NULL) {
+                error("Error opening file");
+              }
+              free(fp_name);
+              system("echo -n $(date)");
+              printf(" Allocating pval.bin\n");
+              z = posix_fallocate64(fileno(fp), 0, size); //resizes file to 'size', points to memory on disk for writing p-values multithreaded
+              if (z != 0) {
+                error("Could not resize output file");
+              }
+              fclose(fp);
+
+              uint64_t l0 = read_l0(inputFile);
+              agentHeader = create_agent_header(l0);
+              read_agent_header(inputFile, agentHeader);
+              validate_agent_header(agentHeader);
+              loop_each_variant(inputFile, outputFile, outputGwasDirectory, &phenos, NULL, agentHeader, computeThreads, action);
+              destroy_agent_header(agentHeader);
+              close_files(inputFile, outputFile);
+              destroy(*phenos.y);
+              destroy(*phenos.yt);
+              destroy(*phenos.obs);
+              destroy(*phenos.denom);
+              system("echo -n $(date)");
+              printf(" Allocation complete\n");
+            }
             break;
           }
 
