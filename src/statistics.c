@@ -67,6 +67,8 @@ double ddot_ (
   INT *
 );
 
+
+
 // Carryout D univariate linear regressions.
 void regression(t_matrix g,               // input variables
                 t_matrix y,               // input variables
@@ -92,7 +94,6 @@ void regression(t_matrix g,               // input variables
       break;
     }
   }
-
 
   switch (missing) {
     case 0: {

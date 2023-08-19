@@ -3,6 +3,7 @@
 #include "matrix.h"
 #include "phenotype.h"
 
+
 int numPhenotypes(char *fname) {
   FILE *fp = fopen(fname, "r");
   int D = 0;
@@ -89,11 +90,10 @@ void load_phenotypes2(char *fname, t_matrix *y, t_matrix *obs, t_matrix *denom, 
   }
 }
 
+
 void load_phenotypes2_voxels(double* data, t_matrix *y, t_matrix *obs, t_matrix *denom, int N, int numSubjects, int D0, int D) {
 
   *y = load2_voxels(data, N, D0, D);
-
-  //print(*y);
 
   *obs = create(N, D);
   *denom = create(1, D);

@@ -12,15 +12,21 @@ CFLAGS += -DBUILD_DATE='"$(shell date "+%B %Y")"' -DGIT_VERSION='"$(shell git de
 SRCDIRS := ./src
 SOURCES := $(wildcard $(foreach i,$(SRCDIRS),$i/*.c))
 
+RNIFTI_LIB = ./lib/RNifti/libRNifti.a
+
 export ZSTD_LEGACY_SUPPORT := 0
 export ZSTD_LIB_DICTBUILDER := 0
 export ZSTD_LIB_DEPRECATED := 0
 
-agent: $(SOURCES:%.c=%.o) | zstd 
+agent: $(SOURCES:%.c=%.o) | rnifti zstd 
 	$(CC) -o $@ $(COMMON_FLAGS) $(foreach i,$(LIBRARY),-L$i) $^ $(foreach i,$(LINK),-l$(i))
 
-agent-static: $(SOURCES:%.c=%.o) | zstd 
+agent-static: $(SOURCES:%.c=%.o) | rnifti zstd 
 	$(CC) -o $@ $(COMMON_FLAGS) -static-libstdc++ -static-libgcc -static $(foreach i,$(LIBRARY),-L$i) $^ $(foreach i,$(LINK),-l$(i))
+
+.PHONY: rnifti
+rnifti:
+	$(MAKE) -C lib/RNifti
 
 .PHONY: zstd
 zstd:
@@ -29,6 +35,7 @@ zstd:
 .PHONY: clean
 clean:
 	$(MAKE) -C lib/zstd-1.5.0 clean
+	$(MAKE) -C lib/RNifti clean
 	rm $(foreach i,$(SRCDIRS),$i/*.o) $(foreach i,$(SRCDIRS),$i/*.d) || true
 
--include $(SOURCES:%.c=%.d)
+-include

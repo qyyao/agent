@@ -29,6 +29,7 @@
 #include "read_nifti.h"
 // agent.c
 
+
 void loop_each_variant(FILE* inputFile, FILE* outputFile, char *output_dir, t_phenotype *phenos, BgenHeader *bgenHeader, AgentHeader *agentHeader, uint16_t computeThreads, int action) {
     assert(!(bgenHeader == NULL && agentHeader == NULL));
     uint32_t m;
@@ -164,25 +165,42 @@ int agent_main(int argc, char** argv) {
             int N = numSamples(inputA1File);
             int M = numVariants(inputA1File);
 
-            printf("N is %d\n", N); 
-            printf("M is %d\n", M); 
-
             int test = 1;
 
-            if (1 == 2){
-            //if (is_nifti_file_wrapper(inputPhenotypeFile)){
+            if (is_nifti_filename(inputPhenotypeFile)){
+
+              // phenotype_to_nifti('/home/annieyao/projects/def-lelliott/annieyao/projects/agent2/agent/association_test/phenotypes.txt', '/home/annieyao/projects/def-lelliott/annieyao/projects/agent2/agent/association_test/nifti_result.nii');
+
+              // const char* nii_filename = "/home/annieyao/projects/def-lelliott/annieyao/projects/agent2/agent/association_test/nifti_result.nii";
+
+              // // 1. Print the number of subjects
+              // int numSubjects = getNumSubjects(nii_filename);
+              // std::cout << "Number of subjects: " << numSubjects << std::endl;
+
+              // // 2. Print the number of voxels per subject
+              // long int voxelsPerSubject = getVoxelsPerSubject(nii_filename);
+              // std::cout << "Number of voxels per subject: " << voxelsPerSubject << std::endl;
+
+              // // 3. Print the first chunk with size 10
+              // double voxelArray[10 * numSubjects]; // Assuming the chunk size is 10 and we'll extract for all subjects
+              // loadChunk(nii_filename, voxelArray, numSubjects, 0, 10, 10 * numSubjects);
+              
+              // std::cout << "First chunk (size 10):" << std::endl;
+              // for (int subj = 0; subj < numSubjects; subj++) {
+              //     for (int i = 0; i < 10; i++) {
+              //         long int idx = subj * 10 + i; // This is the index in our voxelArray
+              //         std::cout << voxelArray[idx] << " ";
+              //     }
+              //     std::cout << std::endl; // New line per subject
+              // }              
 
               int numSubjects = getNumSubjects(inputPhenotypeFile);
 
-              printf("there are %d subjects\n", numSubjects);
-
-              int chunkSize = (sysconf(_SC_PAGESIZE) / 8);
+              int chunkSize = (sysconf(_SC_PAGESIZE) / 8) * 5; //Hhow big?
 
               long int numChunks = getNumChunks(inputPhenotypeFile, chunkSize);
-
-              printf("there are %d chunks of size %d\n", numChunks, chunkSize);
-
-              double* voxelArray = (double*)malloc(chunkSize * sizeof(double));
+              long int arraySize = chunkSize * numSubjects;
+              double* voxelArray = (double*)malloc(arraySize * sizeof(double));
 
               int D0 = chunkSize;
               int D;
@@ -198,9 +216,8 @@ int agent_main(int argc, char** argv) {
                 long int startIndex = i * chunkSize;
                 long int endIndex = (i + 1) * chunkSize;
 
-                void loadChunk(inputPhenotypeFile, voxelArray, numSubjects, startIndex, endIndex, chunkSize);
-
-                load_phenotypes2_voxels(voxelArray, &y, &obs, &denom, N, numSubjects, D0, D);
+                loadChunk(inputPhenotypeFile, voxelArray, numSubjects, startIndex, endIndex, arraySize);
+                load_phenotypes2_voxels(voxelArray, &y, &obs, &denom, N, numSubjects, D0, D); //why both N and numSubjects?
 
                 t_phenotype phenos;
                 yt = create(D, N);
@@ -259,74 +276,74 @@ int agent_main(int argc, char** argv) {
                   error("Error opening file");
                 }
                 free(fl_name);
+
+                //initialize command and z
+                char command[PATH_MAX + 50]; 
+                int z;  
+
+                // start with beta.bin
                 char *fb_list[] = { subdirectory, "beta.bin", NULL };
                 char *fb_name = join(fb_list, "/");
-                FILE *fb = fopen(fb_name, "w");
-                if (fb == NULL) {
-                  
-                  error("Error opening file");
-                }
-                free(fb_name);
-                int z;
+
                 off64_t size = (off64_t)D * (off64_t)M * (off64_t)sizeof(double);
                 // printf("%d %d %d %lld %d\n", D, M, sizeof(double), (off64_t)D*(off64_t)M*(off64_t)sizeof(double), sizeof(off64_t));
                 // printf("size = %lld\n", size);
                 system("echo -n $(date)");
                 printf(" Allocating beta.bin\n");
-                z = posix_fallocate64(fileno(fb), 0, size);
+
+                //execute fallocate unix command
+                snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, fb_name); //fallocate -x -l [size] [file_path]
+                z = system(command);
+
                 if (z != 0) {
-                  fprintf(stderr, "%d %d: %s\n", z, errno, strerror(errno));
+                  fprintf(stderr, "fallocate failed: %d\n", z);
                   error("Could not resize output file");
                 }
-                fclose(fb);
+                free(fb_name);
+
+                //se.bin
                 char *fs_list[] = { subdirectory, "se.bin", NULL };
                 char *fs_name = join(fs_list, "/");
-                FILE *fs = fopen(fs_name, "w");
-                if (fs == NULL) {
-                  error("Error opening file");
-                }
-                free(fs_name);
+
                 system("echo -n $(date)");
                 printf(" Allocating se.bin\n");
-                z = posix_fallocate64(fileno(fs), 0, size);
+                snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, fs_name); //fallocate -x -l [size] [file_path]
+                z = system(command);
                 if (z != 0) {
                   error("Could not resize output file");
                 }
-                fclose(fs);
+                free(fs_name);
+
+                //tstat.bin
                 char *ft_list[] = { subdirectory, "tstat.bin", NULL };
                 char *ft_name = join(ft_list, "/");
-                FILE *ft = fopen(ft_name, "w");
-                if (ft == NULL) {
-                  error("Error opening file");
-                }
-                free(ft_name);
+
                 system("echo -n $(date)");
                 printf(" Allocating tstat.bin\n");
-                z = posix_fallocate64(fileno(ft), 0, size);
+                snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, ft_name); //fallocate -x -l [size] [file_path]
+                z = system(command);
                 if (z != 0) {
                   error("Could not resize output file");
                 }
-                fclose(ft);
+                free(ft_name);
+
+                //pval.bin
                 char *fp_list[] = { subdirectory, "pval.bin", NULL };
                 char *fp_name = join(fp_list, "/");
-                FILE *fp = fopen(fp_name, "w");
-                if (fp == NULL) {
-                  error("Error opening file");
-                }
-                free(fp_name);
                 system("echo -n $(date)");
                 printf(" Allocating pval.bin\n");
-                z = posix_fallocate64(fileno(fp), 0, size); //resizes file to 'size', points to memory on disk for writing p-values multithreaded
+                snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, fp_name); //fallocate -x -l [size] [file_path]
+                z = system(command);
                 if (z != 0) {
                   error("Could not resize output file");
                 }
-                fclose(fp);
-
+                free(fp_name);
+                
                 uint64_t l0 = read_l0(inputFile);
                 agentHeader = create_agent_header(l0);
                 read_agent_header(inputFile, agentHeader);
                 validate_agent_header(agentHeader);
-                loop_each_variant(inputFile, outputFile, outputGwasDirectory, &phenos, NULL, agentHeader, computeThreads, action);
+                loop_each_variant(inputFile, outputFile, subdirectory, &phenos, NULL, agentHeader, computeThreads, action);
                 destroy_agent_header(agentHeader);
                 close_files(inputFile, outputFile);
                 destroy(*phenos.y);
@@ -389,7 +406,7 @@ int agent_main(int argc, char** argv) {
               if (fu_file == NULL) {
                 error("Error opening file");
               }
-              #include "unpack.h" //can be used for testing - without arguments to print
+              #include "unpack.h" 
               if (fwrite(unpack, sizeof(unsigned char), unpack_len, fu_file) != unpack_len) {
                 error("Could not write unpacking script");
               }
@@ -405,68 +422,66 @@ int agent_main(int argc, char** argv) {
                 error("Error opening file");
               }
               free(fl_name);
+                              //initialize command and z
+              char command[PATH_MAX + 50]; 
+              int z;
+              // start with beta.bin
               char *fb_list[] = { outputGwasDirectory, "beta.bin", NULL };
               char *fb_name = join(fb_list, "/");
-              FILE *fb = fopen(fb_name, "w");
-              if (fb == NULL) {
-                error("Error opening file");
-              }
-              free(fb_name);
-              int z;
+
               off64_t size = (off64_t)D * (off64_t)M * (off64_t)sizeof(double);
               // printf("%d %d %d %lld %d\n", D, M, sizeof(double), (off64_t)D*(off64_t)M*(off64_t)sizeof(double), sizeof(off64_t));
               // printf("size = %lld\n", size);
               system("echo -n $(date)");
               printf(" Allocating beta.bin\n");
-              printf("File Descriptor: %d\n", fileno(fb));
-              z = posix_fallocate64(fileno(fb), 0, size);
-              if (z != 0) { //<- this is where error occurs
-                fprintf(stderr, "%d %d: %s\n", z, errno, strerror(errno));
+
+              //execute fallocate unix command
+              snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, fb_name); //fallocate -x -l [size] [file_path]
+              z = system(command);
+
+              if (z != 0) {
+                fprintf(stderr, "fallocate failed: %d\n", z);
                 error("Could not resize output file");
               }
-              fclose(fb);
+              free(fb_name);
+
+              //se.bin
               char *fs_list[] = { outputGwasDirectory, "se.bin", NULL };
               char *fs_name = join(fs_list, "/");
-              FILE *fs = fopen(fs_name, "w");
-              if (fs == NULL) {
-                error("Error opening file");
-              }
-              free(fs_name);
+
               system("echo -n $(date)");
               printf(" Allocating se.bin\n");
-              z = posix_fallocate64(fileno(fs), 0, size);
+              snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, fs_name); //fallocate -x -l [size] [file_path]
+              z = system(command);
               if (z != 0) {
                 error("Could not resize output file");
               }
-              fclose(fs);
+              free(fs_name);
+
+              //tstat.bin
               char *ft_list[] = { outputGwasDirectory, "tstat.bin", NULL };
               char *ft_name = join(ft_list, "/");
-              FILE *ft = fopen(ft_name, "w");
-              if (ft == NULL) {
-                error("Error opening file");
-              }
-              free(ft_name);
+
               system("echo -n $(date)");
               printf(" Allocating tstat.bin\n");
-              z = posix_fallocate64(fileno(ft), 0, size);
+              snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, ft_name); //fallocate -x -l [size] [file_path]
+              z = system(command);
               if (z != 0) {
                 error("Could not resize output file");
               }
-              fclose(ft);
+              free(ft_name);
+
+              //pval.bin
               char *fp_list[] = { outputGwasDirectory, "pval.bin", NULL };
               char *fp_name = join(fp_list, "/");
-              FILE *fp = fopen(fp_name, "w");
-              if (fp == NULL) {
-                error("Error opening file");
-              }
-              free(fp_name);
               system("echo -n $(date)");
               printf(" Allocating pval.bin\n");
-              z = posix_fallocate64(fileno(fp), 0, size); //resizes file to 'size', points to memory on disk for writing p-values multithreaded
+              snprintf(command, sizeof(command), "fallocate -x -l %lld %s", (long long)size, fp_name); //fallocate -x -l [size] [file_path]
+              z = system(command);
               if (z != 0) {
                 error("Could not resize output file");
               }
-              fclose(fp);
+              free(fp_name);
 
               uint64_t l0 = read_l0(inputFile);
               agentHeader = create_agent_header(l0);

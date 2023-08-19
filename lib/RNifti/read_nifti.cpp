@@ -5,8 +5,20 @@
 
 extern "C" {
 
-int is_nifti_file_wrapper(const char* nii_filename){
-    return is_nifti_file(nii_filename);
+int is_nifti_filename(const char* nii_filename){
+
+    const char *extension = strrchr(nii_filename, '.');
+    if (extension != NULL) {
+        if (strcmp(extension, ".nii") == 0 || strcmp(extension, ".hdr") == 0 || strcmp(extension, ".img") == 0) {
+            return 1;
+        }
+        // Check for .nii.gz
+        if (strcmp(extension, ".gz") == 0 && strlen(nii_filename) > 4 && strcmp(extension - 4, ".nii") == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 long int getVoxelsPerSubject(const char* nii_filename){
@@ -56,14 +68,23 @@ int getNumSubjects(const char* nii_filename){
 }
 
 void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, long int startIndex, long int endIndex, long int arrayLength) {
+
+
+
     // Load the NIfTI image from a file using RNifti
     RNifti::NiftiImage image(nii_filename);
 
     // Access the pixel data of the NIfTI image
-    RNifti::NiftiImageData imageData = image.data(); 
+    RNifti::NiftiImageData imageData = image.data();
+
+    // 2. Bounds checking for imageData access
+    long int imageDataLength = imageData.length(); // Assuming .length() method exists
+    if (imageDataLength <= 0) {
+        std::cerr << "Image data is empty or invalid." << std::endl;
+        return;
+    }
     
     //TODO: RAS
-
     long int voxelsPerSubject = getVoxelsPerSubject(nii_filename);
 
     // Fill the voxelArray with the relevant data
@@ -72,7 +93,22 @@ void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, l
         // Iterate over each voxel in the chunk for the current subject
         for (long int i = startIndex; i < endIndex; i++) {
             long int idx = subj * voxelsPerSubject + i;
-            long int out_idx = subj * (endIndex - startIndex) + (i - startIndex); //i-startIndex sets array to 0, endIndex - startIndex gives chunk size
+
+            // Additional bound check
+            if (idx >= imageDataLength) {
+                std::cerr << "Trying to access out-of-bounds index in imageData." << std::endl;
+                return;
+            }
+
+            long int out_idx = subj * (endIndex - startIndex) + (i - startIndex);
+            
+            // 4. Ensure voxelArray has been properly allocated
+            if (out_idx >= arrayLength) {
+                printf("out_idx is %d, greater than arrayLength of %d\n", out_idx, arrayLength);
+                std::cerr << "voxelArray index out of bounds." << std::endl;
+                return;
+            }
+            
             voxelArray[out_idx] = imageData[idx];
         }
     }
@@ -83,23 +119,21 @@ void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, l
     }
 }
 
+
 void agent_convert(const char* nii_filename, const char* phenotypes_filename) {
     // Get the number of subjects
     int numSubjects = getNumSubjects(nii_filename);
 
-    // Get the total number of voxels per subject
     long int voxelsPerSubject = getVoxelsPerSubject(nii_filename);
 
-    // Load the NIfTI image from a file using RNifti
     RNifti::NiftiImage image(nii_filename);
 
-    // Access the pixel data of the NIfTI image
     RNifti::NiftiImageData imageData = image.data();
 
-    // Open a file stream for the phenotype file, creating it if it does not exist
+    // open phenotype file
     std::ofstream phenotypeFile(phenotypes_filename);
 
-    // Write the headers
+    // write headers
     for (int voxel = 1; voxel <= voxelsPerSubject; voxel++) {
         phenotypeFile << "V" << voxel;
         if (voxel < voxelsPerSubject) {
@@ -108,7 +142,7 @@ void agent_convert(const char* nii_filename, const char* phenotypes_filename) {
     }
     phenotypeFile << '\n';
 
-    // Iterate over the subjects, and for each subject, write the corresponding value for each voxel
+    // write values
     for (int subj = 0; subj < numSubjects; subj++) {
         for (long int i = 0; i < voxelsPerSubject; i++) {
             long int idx = subj * voxelsPerSubject + i;
@@ -125,6 +159,56 @@ void agent_convert(const char* nii_filename, const char* phenotypes_filename) {
 
     std::cout << "Conversion complete. Phenotypes written to " << phenotypes_filename << std::endl;
 }
+
+void phenotype_to_nifti(const char* phenotypes_filename, const char* nii_filename, int dimX, int dimY, int dimZ) {
+    std::ifstream phenotypeFile(phenotypes_filename);
+
+    // Check if file opened correctly
+    if (!phenotypeFile.is_open()) {
+        std::cerr << "Error opening phenotype file: " << phenotypes_filename << std::endl;
+        return;
+    }
+
+    std::vector<uint8_t> phenotypeData;  // 1D vector to store data as uint8_t
+    std::string line;
+    int numRows = 0;  // Variable to count number of rows
+
+    // Skip the header row
+    std::getline(phenotypeFile, line);
+
+    while (std::getline(phenotypeFile, line)) {
+        numRows++;  // Increase the row count
+
+        std::istringstream iss(line);
+        double value;
+        while (iss >> value) {
+            if (value < 0 || value > 255) {
+                std::cerr << "Value out of uint8_t range: " << value << std::endl;
+                return;
+            }
+            phenotypeData.push_back(static_cast<uint8_t>(value));
+        }
+    }
+    phenotypeFile.close();
+
+    const std::vector<int> dim = {dimX, dimY, dimZ};
+    const size_t requiredSize = dimX * dimY * dimZ;
+
+    // Check the size of the read data
+    if (phenotypeData.size() != requiredSize) {
+        std::cerr << "Mismatch in expected data size: read " << phenotypeData.size() << ", expected " << requiredSize << std::endl;
+        return;
+    }
+
+    // // Create image object then change the values to phenotypeData
+    // RNifti::NiftiImage image(dim, DT_UINT8);
+    // image.replaceData(phenotypeData);
+
+    // image.toFile(nii_filename);
+
+    // std::cout << "Phenotypes from " << phenotypes_filename << " written to " << nii_filename << std::endl;
+}
+
 
 
 } // extern "C"
