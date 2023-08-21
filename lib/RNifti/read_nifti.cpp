@@ -120,7 +120,7 @@ void loadChunk(const char* nii_filename, double* voxelArray, int num_subjects, l
 }
 
 
-void agent_convert(const char* nii_filename, const char* phenotypes_filename) {
+void nifti_to_phenotype(const char* nii_filename, const char* phenotypes_filename) {
     // Get the number of subjects
     int numSubjects = getNumSubjects(nii_filename);
 
@@ -161,7 +161,11 @@ void agent_convert(const char* nii_filename, const char* phenotypes_filename) {
 }
 
 void phenotype_to_nifti(const char* phenotypes_filename, const char* nii_filename, int dimX, int dimY, int dimZ) {
+    
+    printf("reading phenotype file\n");
     std::ifstream phenotypeFile(phenotypes_filename);
+
+    printf("phenotype file is: %s", phenotypes_filename);
 
     // Check if file opened correctly
     if (!phenotypeFile.is_open()) {
@@ -191,7 +195,7 @@ void phenotype_to_nifti(const char* phenotypes_filename, const char* nii_filenam
     }
     phenotypeFile.close();
 
-    const std::vector<int> dim = {dimX, dimY, dimZ};
+    const std::vector<long int> dim = {dimX, dimY, dimZ};
     const size_t requiredSize = dimX * dimY * dimZ;
 
     // Check the size of the read data
@@ -200,13 +204,13 @@ void phenotype_to_nifti(const char* phenotypes_filename, const char* nii_filenam
         return;
     }
 
-    // // Create image object then change the values to phenotypeData
-    // RNifti::NiftiImage image(dim, DT_UINT8);
-    // image.replaceData(phenotypeData);
+    // Create image object then change the values to phenotypeData
+    RNifti::NiftiImage image(dim, DT_UINT8); //check DT_UINT8 source, check constructors
+    image.replaceData(phenotypeData);
 
-    // image.toFile(nii_filename);
+    image.toFile(nii_filename);
 
-    // std::cout << "Phenotypes from " << phenotypes_filename << " written to " << nii_filename << std::endl;
+    std::cout << "Phenotypes from " << phenotypes_filename << " written to " << nii_filename << std::endl;
 }
 
 
